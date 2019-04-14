@@ -20,7 +20,7 @@ class ChatConsumer(AsyncConsumer):
         thread_obj = await self.get_thread(me,other_user)
         chat_room  = f"thread_{thread_obj.id}"
         self.chat_room = chat_room
-
+        self.thread_obj = thread_obj
         await self.channel_layer.group_add(
             chat_room,
             self.channel_name 
@@ -43,10 +43,15 @@ class ChatConsumer(AsyncConsumer):
             username = 'default'
             if user.is_authenticated:
                 username = user.username
+
+            me = self.scope['user']
             myResponse = {
                 'message' : msg,
                 'username' : username
             }
+            await self.create_chat_message(me,msg)
+
+
 
             new_event = {
                 "type":"websocket_send",
@@ -74,3 +79,8 @@ class ChatConsumer(AsyncConsumer):
     @database_sync_to_async
     def get_thread(self,user,other_user):
         return Thread.objects.get_or_new(user,other_user)[0]
+
+    @database_sync_to_async
+    def create_chat_message(self,me,msg):
+        thread_obj = self.thread_obj
+        chat_message = ChatMessage.objects.create(thread=thread_obj,user=me,message=msg)
