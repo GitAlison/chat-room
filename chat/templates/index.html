@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block content %}
+<br>
+<h2>Chat Room </h2>
+
+
+<div class="row">
+    <div class="col-sm-3">
+
+    </div>
+    <div class="col-sm-8">
+        <h4>Thread</h4>
+        <hr>
+        <div class="card">
+            <div class="card-header">
+                Chat
+            </div>
+            <div class="card-body">
+                <ul id="chat" class="list-unstyled">
+                 
+                    {% for chat in object.chatmessage_set.all %}
+                    <li>{{ chat.message }} via {{ chat.user }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <form id="form" method="post">
+            {% csrf_token %}
+            <div class="input-group">
+                <input type="hidden" id="me" value="{{user.username}}">
+                <input  autofocus id="id_message" class="form-control" type="text" placeholder="Recipient's text" aria-label="Recipient's " aria-describedby="my-addon">
+                <div class="input-group-append">
+                    <span class="" id="my-addon">
+                        <button class="btn btn-dark" type="submit">Send</button>
+                    </span>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+
+{% endblock content %}
+{% block script %}
+<script>
+    var loc = window.location
+    var wsStart = 'ws://'
+    var form = $('#form')
+    var message = $('#id_message')
+    var chat = $('#chat')
+    var me = $('#me').val()
+
+    if (loc.protocol == 'https:') {
+        wsStart = 'wss://'
+    }
+    var endpoint = wsStart + loc.host + loc.pathname + 'messages'
+    var socket = new WebSocket(endpoint)
+
+
+    socket.onmessage = function (e) {
+
+        var chatDataMsg = JSON.parse(e.data)
+        console.log(chatDataMsg.username)
+        console.log("message", e.data)
+        if(me == chatDataMsg.username){
+            chat.append('<li class="float-right" > ' + chatDataMsg.message + '->Via:  '+ chatDataMsg.username +'</li> <br>')
+        }
+        else{
+            chat.append('<li class="float-left" > ' + chatDataMsg.message + '->Via:  '+ chatDataMsg.username +'</li><br>')
+
+        }
+    }
+    socket.onopen = function (e) {
+        console.log("open", e)
+        $('#form').submit(function (event) {
+            event.preventDefault()
+            var msgText = message.val()
+            //chat.append('<li>'+ msgText + ' Via: '+me+ '</ li>') 
+            var finalData = {
+                'message' :msgText
+            }
+            socket.send(JSON.stringify(finalData))
+            form[0].reset()
+        })
+    }
+
+    socket.onerror = function (e) {
+        console.log("error", e)
+    }
+    socket.onclose = function (e) {
+        console.log("close", e)
+    }
+</script>
+
+{% endblock script %}
